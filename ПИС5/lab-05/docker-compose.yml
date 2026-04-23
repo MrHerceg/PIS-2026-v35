@@ -1,0 +1,57 @@
+version: "3.9"
+
+services:
+
+  # ── FastAPI приложение ──────────────────────────────────────────────────────
+  app:
+    build: .
+    container_name: poekhali_app
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://poekhali:poekhali@db:5432/poekhali
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  db:
+    image: postgres:15-alpine
+    container_name: poekhali_db
+    environment:
+      POSTGRES_USER:     poekhali
+      POSTGRES_PASSWORD: poekhali
+      POSTGRES_DB:       poekhali
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U poekhali"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── RabbitMQ (Event Bus) ────────────────────────────────────────────────────
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: poekhali_rabbitmq
+    ports:
+      - "5672:5672"    # AMQP
+      - "15672:15672"  # Management UI (guest/guest)
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  postgres_data:
