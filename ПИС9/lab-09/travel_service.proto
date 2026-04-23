@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package travel;
+
+service TravelService {
+
+  // Создание маршрута
+  rpc CreateRoute(CreateRouteRequest) returns (CreateRouteResponse);
+
+  // Получение информации о маршруте
+  rpc GetRoute(GetRouteRequest) returns (RouteDto);
+
+  // Серверный стриминг: обновления мест по маршруту
+  rpc StreamPlaceUpdates(StreamPlaceRequest) returns (stream PlaceUpdate);
+
+}
+
+// Запрос на создание маршрута
+message CreateRouteRequest {
+  string user_id = 1;
+  string title = 2;
+  string start_date = 3;
+  string end_date = 4;
+  float budget = 5;
+}
+
+// Ответ при создании маршрута
+message CreateRouteResponse {
+  string route_id = 1;
+  string status = 2;
+}
+
+// Запрос на получение маршрута
+message GetRouteRequest {
+  string route_id = 1;
+}
+
+// DTO маршрута
+message RouteDto {
+  string route_id = 1;
+  string user_id = 2;
+  string title = 3;
+  string start_date = 4;
+  string end_date = 5;
+  float budget = 6;
+  string status = 7;
+}
+
+// Запрос для подписки на обновления мест
+message StreamPlaceRequest {
+  string route_id = 1;
+}
+
+// DTO обновления места
+message PlaceUpdate {
+  string route_id = 1;
+  string place_name = 2;
+  string visit_date = 3;
+  string note = 4;
+  string timestamp = 5;
+}
