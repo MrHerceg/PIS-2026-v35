@@ -1,0 +1,3 @@
+from application.command.handlers.create_trip_handler import CreateTripHandler
+from application.command.handlers.add_place_handler import AddPlaceToRouteHandler
+from application.command.handlers.add_note_handler import AddNoteHandler
