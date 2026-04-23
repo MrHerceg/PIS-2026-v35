@@ -1,0 +1,104 @@
+version: "3.9"
+
+services:
+
+  # ── API Gateway (Nginx) ─────────────────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: poekhali_gateway
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - route-service
+      - place-service
+    restart: unless-stopped
+
+  # ── Route Service ───────────────────────────────────────────────────────────
+  route-service:
+    build: ./route-service
+    container_name: poekhali_route_service
+    ports:
+      - "8001:8000"
+    environment:
+      DATABASE_URL: postgresql://poekhali:poekhali@route-db:5432/routes
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+    depends_on:
+      route-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Place & Budget Service ──────────────────────────────────────────────────
+  place-service:
+    build: ./place-service
+    container_name: poekhali_place_service
+    ports:
+      - "8002:8000"
+    environment:
+      DATABASE_URL: postgresql://poekhali:poekhali@place-db:5432/places
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+    depends_on:
+      place-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Route DB (PostgreSQL) ───────────────────────────────────────────────────
+  route-db:
+    image: postgres:15-alpine
+    container_name: poekhali_route_db
+    environment:
+      POSTGRES_USER:     poekhali
+      POSTGRES_PASSWORD: poekhali
+      POSTGRES_DB:       routes
+    ports:
+      - "5433:5432"
+    volumes:
+      - route_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U poekhali"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Place DB (PostgreSQL) ───────────────────────────────────────────────────
+  place-db:
+    image: postgres:15-alpine
+    container_name: poekhali_place_db
+    environment:
+      POSTGRES_USER:     poekhali
+      POSTGRES_PASSWORD: poekhali
+      POSTGRES_DB:       places
+    ports:
+      - "5434:5432"
+    volumes:
+      - place_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U poekhali"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── RabbitMQ (Event Bus) ────────────────────────────────────────────────────
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: poekhali_rabbitmq
+    ports:
+      - "5672:5672"    # AMQP
+      - "15672:15672"  # Management UI → http://localhost:15672 (guest/guest)
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  route_db_data:
+  place_db_data:
